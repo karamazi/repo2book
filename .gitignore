@@ -1,0 +1,7 @@
+.vscode
+__pycache__
+latex_test
+repo
+book.*
+*.pyc
+*.pdf
