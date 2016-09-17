@@ -2,6 +2,7 @@ import os
 from fnmatch import fnmatch
 
 _default_ignore_files = ['.*','__*', '*.h', '*.hpp', '*.vcxproj*', '*.sln', "Clean", "*akefile*"]
+_default_ignore_dirs = ['.*', '__*']
 _ext2lang = {
     'py': 'Python',
     'cpp': 'C++',
@@ -10,7 +11,7 @@ _ext2lang = {
 }
 _depth2section = {
     0: 'part',
-    1: 'chapter',
+    1: 'chapter',   
     2: 'section',
     3: 'subsection'
 }
@@ -82,20 +83,37 @@ class Book:
 
 
 class BookGenerator:
-    def __init__(self, path, ignore_files=_default_ignore_files, output='book.tex'):
+    def __init__(self, path, ignore_files=_default_ignore_files, 
+                 ignore_dirs=_default_ignore_dirs, output='book.tex'):
         self._repo_path = path
         self._ignore_files = ignore_files
-
+        self._ignore_dirs = ignore_dirs
+    
     def run(self):
         with Book(titles=['SGS', 'Social Game Server'], authors=["Marcin Meinardi", "with Ganymede folks"]) as book:
             for path, dirs, files in os.walk(self._repo_path):
-                print('Processing', path)
-                depth = path.replace(self._repo_path, '').count(os.sep)
+                dir_path = path.replace(self._repo_path, '')
+                if self.skip_dir(dir_path):
+                    continue
+
+                print('Processing {0}'.format(path))
+                depth = dir_path.count(os.sep)
                 if depth > 0:
                     book.add_chapter(path.split(os.sep)[-1], depth)
+            
                 for f in files:
-                    if any(fnmatch(f, pattern) for pattern in self._ignore_files):
+                    if self.skip_file(f):
                         continue
                     file_path = os.path.join(path, f)
-                    print("Processing ", file_path)
+                    print("Processing {0} {1}".format(" "*depth*2, file_path))
                     book.add_listing(file_path, depth)
+    
+    def skip_file(self, file):
+        return any(fnmatch(file, pattern) for pattern in self._ignore_files)
+
+    def skip_dir(self, dir_path):
+        dirs = dir_path.split(os.sep)
+        for d in dirs:
+            if any(fnmatch(d, pattern) for pattern in self._ignore_dirs):
+                return True
+        return False
